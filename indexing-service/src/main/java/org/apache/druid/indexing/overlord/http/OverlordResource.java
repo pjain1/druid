@@ -44,7 +44,9 @@ import org.apache.druid.indexer.TaskStatus;
 import org.apache.druid.indexer.TaskStatusPlus;
 import org.apache.druid.indexing.common.actions.TaskActionClient;
 import org.apache.druid.indexing.common.actions.TaskActionHolder;
+import org.apache.druid.indexing.common.task.IndexTask;
 import org.apache.druid.indexing.common.task.Task;
+import org.apache.druid.indexing.input.DruidInputSource;
 import org.apache.druid.indexing.overlord.IndexerMetadataStorageAdapter;
 import org.apache.druid.indexing.overlord.TaskMaster;
 import org.apache.druid.indexing.overlord.TaskQueue;
@@ -175,6 +177,28 @@ public class OverlordResource
       throw new ForbiddenException(authResult.getMessage());
     }
 
+    // if its a reindex task from druid, make sure the user has read permissions on the source druid datasource
+    if (task instanceof IndexTask && ((IndexTask) task).getIngestionSchema()
+                                                       .getIOConfig()
+                                                       .getInputSource() instanceof DruidInputSource) {
+      final String readFromDataSource = ((DruidInputSource) ((IndexTask) task).getIngestionSchema()
+                                                                              .getIOConfig()
+                                                                              .getInputSource()).getDataSource();
+      authResult = AuthorizationUtils.authorizeResourceAction(
+          req,
+          new ResourceAction(new Resource(readFromDataSource, ResourceType.DATASOURCE), Action.READ),
+          authorizerMapper
+      );
+
+      if (!authResult.isAllowed()) {
+        throw new ForbiddenException(StringUtils.format(
+            "Authorization to read datasource [%s] failed, [%s]",
+            dataSource,
+            authResult.toString()
+        ));
+      }
+    }
+
     return asLeaderWith(
         taskMaster.getTaskQueue(),
         new Function<TaskQueue, Response>()
@@ -299,7 +323,9 @@ public class OverlordResource
                 taskInfo.getStatus().getStatusCode(),
                 RunnerTaskState.WAITING,
                 taskInfo.getStatus().getDuration(),
-                taskInfo.getStatus().getLocation() == null ? TaskLocation.unknown() : taskInfo.getStatus().getLocation(),
+                taskInfo.getStatus().getLocation() == null
+                ? TaskLocation.unknown()
+                : taskInfo.getStatus().getLocation(),
                 taskInfo.getDataSource(),
                 taskInfo.getStatus().getErrorMsg()
             )
@@ -619,7 +645,11 @@ public class OverlordResource
         createdTimeDuration = theInterval.toDuration();
       }
       final List<TaskInfo<Task, TaskStatus>> taskInfoList =
-          taskStorageQueryAdapter.getCompletedTaskInfoByCreatedTimeDuration(maxCompletedTasks, createdTimeDuration, dataSource);
+          taskStorageQueryAdapter.getCompletedTaskInfoByCreatedTimeDuration(
+              maxCompletedTasks,
+              createdTimeDuration,
+              dataSource
+          );
       final List<TaskStatusPlus> completedTasks = taskInfoList.stream()
                                                               .map(completeTaskTransformFunc::apply)
                                                               .collect(Collectors.toList());
