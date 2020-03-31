@@ -51,8 +51,13 @@ public class ConfigResourceFilter extends AbstractResourceFilter
   @Override
   public ContainerRequest filter(ContainerRequest request)
   {
+    return filterWithName(request, "CONFIG");
+  }
+
+  protected ContainerRequest filterWithName(ContainerRequest request, String resourceName)
+  {
     final ResourceAction resourceAction = new ResourceAction(
-        new Resource("CONFIG", ResourceType.CONFIG),
+        new Resource(resourceName, ResourceType.CONFIG),
         getAction(request)
     );
 
