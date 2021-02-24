@@ -87,14 +87,14 @@ public class KinesisSupervisorIOConfig extends SeekableStreamSupervisorIOConfig
         completionTimeout,
         lateMessageRejectionPeriod,
         earlyMessageRejectionPeriod,
-        null,
+        autoscalerConfig,
         lateMessageRejectionStartDateTime
     );
 
     // for now dynamic Allocation Tasks is not supported here
     // throw UnsupportedOperationException in case someone sets this on a kinesis supervisor spec.
     if (autoscalerConfig != null) {
-      throw new UnsupportedOperationException("Tasks auto scaler for kinesis is not supported yet. Please remove autoscalerConfig or set it null!");
+      throw new UnsupportedOperationException("Tasks auto scaler for kinesis is not supported yet. Please remove autoscalerConfig or set it to null!");
     }
 
     this.endpoint = endpoint != null

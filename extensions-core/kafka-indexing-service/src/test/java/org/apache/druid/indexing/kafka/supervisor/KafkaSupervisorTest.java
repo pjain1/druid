@@ -61,7 +61,7 @@ import org.apache.druid.indexing.overlord.TaskStorage;
 import org.apache.druid.indexing.overlord.supervisor.SupervisorReport;
 import org.apache.druid.indexing.overlord.supervisor.SupervisorStateManager;
 import org.apache.druid.indexing.overlord.supervisor.SupervisorStateManagerConfig;
-import org.apache.druid.indexing.overlord.supervisor.autoscaler.SupervisorTaskAutoscaler;
+import org.apache.druid.indexing.overlord.supervisor.autoscaler.SupervisorTaskAutoScaler;
 import org.apache.druid.indexing.seekablestream.SeekableStreamEndSequenceNumbers;
 import org.apache.druid.indexing.seekablestream.SeekableStreamIndexTaskRunner.Status;
 import org.apache.druid.indexing.seekablestream.SeekableStreamIndexTaskTuningConfig;
@@ -70,7 +70,7 @@ import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorSpec;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorStateManager;
 import org.apache.druid.indexing.seekablestream.supervisor.TaskReportData;
-import org.apache.druid.indexing.seekablestream.supervisor.autoscaler.DefaultAutoScalerConfig;
+import org.apache.druid.indexing.seekablestream.supervisor.autoscaler.LagBasedAutoScalerConfig;
 import org.apache.druid.java.util.common.DateTimes;
 import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.StringUtils;
@@ -288,7 +288,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
             1,
             new Period("PT1H"),
             consumerProperties,
-            OBJECT_MAPPER.convertValue(autoscalerConfig, DefaultAutoScalerConfig.class),
+            OBJECT_MAPPER.convertValue(autoscalerConfig, LagBasedAutoScalerConfig.class),
             KafkaSupervisorIOConfig.DEFAULT_POLL_TIMEOUT_MILLIS,
             new Period("P1D"),
             new Period("PT30S"),
@@ -361,7 +361,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
             rowIngestionMetersFactory
     );
 
-    SupervisorTaskAutoscaler autoscaler = testableSupervisorSpec.createAutoscaler(supervisor);
+    SupervisorTaskAutoScaler autoscaler = testableSupervisorSpec.createAutoscaler(supervisor);
 
 
     final KafkaSupervisorTuningConfig tuningConfig = supervisor.getTuningConfig();
