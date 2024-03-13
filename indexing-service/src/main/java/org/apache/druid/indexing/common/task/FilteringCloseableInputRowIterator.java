@@ -42,6 +42,7 @@ public class FilteringCloseableInputRowIterator implements CloseableIterator<Inp
   private final ParseExceptionHandler parseExceptionHandler;
 
   private InputRow next;
+  int i = 0;
 
   public FilteringCloseableInputRowIterator(
       CloseableIterator<InputRow> delegate,
@@ -71,6 +72,9 @@ public class FilteringCloseableInputRowIterator implements CloseableIterator<Inp
             next = row;
           } else {
             rowIngestionMeters.incrementThrownAway();
+            if (i++ % 1000 == 0) {
+              System.out.println(rowIngestionMeters.getTotals());
+            }
           }
         }
         break;

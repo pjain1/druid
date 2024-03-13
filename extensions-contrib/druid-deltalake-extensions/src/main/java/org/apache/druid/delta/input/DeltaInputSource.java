@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -117,7 +118,7 @@ public class DeltaInputSource implements SplittableInputSource<DeltaSplit>
   {
     final TableClient tableClient = createTableClient();
     try {
-      final List<CloseableIterator<FilteredColumnarBatch>> scanFileDataIters = new ArrayList<>();
+      final List<Supplier<CloseableIterator<FilteredColumnarBatch>>> scanFileDataIters = new ArrayList<>();
 
       if (deltaSplit != null) {
         final Row scanState = deserialize(tableClient, deltaSplit.getStateRow());
@@ -127,7 +128,13 @@ public class DeltaInputSource implements SplittableInputSource<DeltaSplit>
         for (String file : deltaSplit.getFiles()) {
           final Row scanFile = deserialize(tableClient, file);
           scanFileDataIters.add(
-              getTransformedDataIterator(tableClient, scanState, scanFile, physicalReadSchema)
+              () -> {
+                  try {
+                    return getTransformedDataIterator(tableClient, scanState, scanFile, physicalReadSchema);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+              }
           );
         }
       } else {
@@ -151,7 +158,13 @@ public class DeltaInputSource implements SplittableInputSource<DeltaSplit>
           while (scanFileRows.hasNext()) {
             final Row scanFile = scanFileRows.next();
             scanFileDataIters.add(
-                getTransformedDataIterator(tableClient, scanState, scanFile, physicalReadSchema)
+                () -> {
+                  try {
+                    return getTransformedDataIterator(tableClient, scanState, scanFile, physicalReadSchema);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
             );
           }
         }
@@ -164,9 +177,6 @@ public class DeltaInputSource implements SplittableInputSource<DeltaSplit>
     }
     catch (TableNotFoundException e) {
       throw InvalidInput.exception(e, "tablePath[%s] not found.", tablePath);
-    }
-    catch (IOException e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -283,6 +293,7 @@ public class DeltaInputSource implements SplittableInputSource<DeltaSplit>
   ) throws IOException
   {
     final FileStatus fileStatus = InternalScanFileUtils.getAddFileStatus(scanFile);
+    System.out.println(fileStatus.getPath() + " " + fileStatus.getSize() + " " + fileStatus.getModificationTime());
 
     final CloseableIterator<ColumnarBatch> physicalDataIter = tableClient.getParquetHandler().readParquetFiles(
         Utils.singletonCloseableIterator(fileStatus),

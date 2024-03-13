@@ -31,6 +31,7 @@ import org.apache.druid.java.util.common.parsers.CloseableIterator;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Supplier;
 
 /**
  * A reader for the Delta Lake input source. It initializes an iterator {@link DeltaInputSourceIterator}
@@ -39,11 +40,11 @@ import java.util.NoSuchElementException;
  */
 public class DeltaInputSourceReader implements InputSourceReader
 {
-  private final Iterator<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>> filteredColumnarBatchIterators;
+  private final Iterator<Supplier<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>>> filteredColumnarBatchIterators;
   private final InputRowSchema inputRowSchema;
 
   public DeltaInputSourceReader(
-      Iterator<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>> filteredColumnarBatchIterators,
+      Iterator<Supplier<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>>> filteredColumnarBatchIterators,
       InputRowSchema inputRowSchema
 
   )
@@ -94,13 +95,13 @@ public class DeltaInputSourceReader implements InputSourceReader
 
   private static class DeltaInputSourceIterator implements CloseableIterator<InputRow>
   {
-    private final Iterator<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>> filteredColumnarBatchIterators;
+    private final Iterator<Supplier<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>>> filteredColumnarBatchIterators;
 
     private io.delta.kernel.utils.CloseableIterator<Row> currentBatch = null;
     private final InputRowSchema inputRowSchema;
 
     public DeltaInputSourceIterator(
-        Iterator<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>> filteredColumnarBatchCloseableIterator,
+        Iterator<Supplier<io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch>>> filteredColumnarBatchCloseableIterator,
         InputRowSchema inputRowSchema
     )
     {
@@ -117,7 +118,7 @@ public class DeltaInputSourceReader implements InputSourceReader
         }
 
         final io.delta.kernel.utils.CloseableIterator<FilteredColumnarBatch> filteredBatchIterator =
-            filteredColumnarBatchIterators.next();
+            filteredColumnarBatchIterators.next().get();
 
         while (filteredBatchIterator.hasNext()) {
           currentBatch = filteredBatchIterator.next().getRows();
@@ -148,7 +149,7 @@ public class DeltaInputSourceReader implements InputSourceReader
       }
 
       if (filteredColumnarBatchIterators.hasNext()) {
-        filteredColumnarBatchIterators.next().close();
+        filteredColumnarBatchIterators.next().get().close();
       }
     }
   }
